@@ -2,7 +2,7 @@
 /**
  * PALMS Enhanced Chatbot - Final Production Version
  * Features: Conversational AI, Inline Forms, Business Email Validation
- * API: https://onpalms-3.onrender.com
+ * API: https://onpalms-6.onrender.com
  */
 if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
@@ -442,7 +442,7 @@ if ( ! function_exists( 'elementor_theme_do_location' ) || ! elementor_theme_do_
     const input = widget.querySelector('.palms-input');
     
     // Production API Configuration
-    const API_URL = 'https://onpalms-3.onrender.com';
+    const API_URL = 'https://onpalms-6.onrender.com';
     
     // Generate session ID
     function generateSessionId() {
