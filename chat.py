@@ -23,7 +23,6 @@ class SalesBotRAG:
         else:
             try:
                 # Use the correct OpenAI client initialization for openai>=1.x
-                from openai import OpenAI
                 self.client = OpenAI(api_key=api_key)
                 print("✅ OpenAI client initialized with GPT-4o")
             except Exception as e:
