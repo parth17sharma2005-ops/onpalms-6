@@ -25,7 +25,8 @@ class SalesBotRAG:
         else:
             try:
                 openai.api_key = api_key
-                self.client = openai.OpenAI(api_key=api_key)
+                # Use the correct OpenAI client initialization for openai>=1.x
+                self.client = openai
                 print("✅ OpenAI client initialized with GPT-4o")
             except Exception as e:
                 print(f"❌ OpenAI initialization failed: {e}")
@@ -129,11 +130,30 @@ class SalesBotRAG:
 
     def get_or_create_collection(self):
         """Get or create ChromaDB collection for PALMS knowledge"""
+        collection_name = "palms_knowledge"
         try:
-            collection = self.chroma_client.get_collection("palms_knowledge")
-        except:
-            collection = self.chroma_client.create_collection("palms_knowledge")
-        return collection
+            # Try to get existing collection
+            collection = self.chroma_client.get_collection(collection_name)
+            print(f"✅ Found existing collection: {collection_name}")
+            return collection
+        except Exception as e:
+            print(f"Collection not found, creating new one: {e}")
+            try:
+                # Create new collection
+                collection = self.chroma_client.create_collection(collection_name)
+                print(f"✅ Created new collection: {collection_name}")
+                return collection
+            except Exception as create_error:
+                print(f"❌ Failed to create collection: {create_error}")
+                # Try to reset and create fresh
+                try:
+                    self.chroma_client.reset()
+                    collection = self.chroma_client.create_collection(collection_name)
+                    print(f"✅ Created collection after reset: {collection_name}")
+                    return collection
+                except Exception as reset_error:
+                    print(f"❌ Failed to create collection even after reset: {reset_error}")
+                    raise reset_error
 
     def load_knowledge_base(self):
         """Load and process the info.txt file into ChromaDB"""
@@ -659,10 +679,16 @@ Are you currently evaluating other WMS solutions? I can do a detailed comparison
             return self.get_demo_response(message, extracted_info, lead_score, stage)
 
     def get_response(self, message, session):
-        """Main response method using two-layer AI system"""
+        """Main response method using enhanced TOFU two-layer AI system"""
         
-        # Analyze intent and update scoring
+        # TOFU Enhancement: Advanced lead qualification
+        session = self.enhanced_lead_qualification(message, session)
+        
+        # Analyze intent and update scoring (existing logic)
         self.analyze_message_intent(message, session)
+        
+        # TOFU Enhancement: Determine engagement strategy
+        engagement_strategy = self.get_tofu_engagement_strategy(session)
         
         # Check if user is asking for human handoff
         if any(phrase in message.lower() for phrase in ['human', 'person', 'agent', 'representative', 'speak to someone']):
@@ -681,30 +707,66 @@ Are you currently evaluating other WMS solutions? I can do a detailed comparison
             # Layer 2: Generate context-aware sales response
             bot_message = self.get_sales_layer_response(message, extracted_info, session)
             
-            # Determine if demo form should be shown with better context awareness
-            lead_score = session.get('lead_score', 0)
-            show_demo_form = False
+            # TOFU Enhancement: Only add conversation flow for next-step questions, not content questions
+            # Don't override when user is asking about features, company info, pricing details, etc.
+            is_content_question = any(keyword in message.lower() for keyword in [
+                'what', 'how', 'why', 'tell me', 'explain', 'about', 'feature', 'price', 
+                'cost', 'company', 'product', 'integration', 'works', 'does', 'can it',
+                'mobile', 'industry', 'clients', 'case', 'benefit', 'problem', 'challenge'
+            ])
             
-            # Check for negative demo intent first
+            if not is_content_question:
+                tofu_response = self.get_tofu_conversation_flow(message, session, engagement_strategy)
+                if tofu_response and engagement_strategy in ['direct_sales', 'nurture_warm']:
+                    # Only enhance with TOFU for next-step conversations
+                    bot_message = tofu_response
+            
+            # Only show demo form if user explicitly requests a demo or call
+            demo_request_phrases = [
+                'demo', 'schedule demo', 'book demo', 'show me demo', 'see demo', 'want demo', 
+                'i want a demo', 'i would like a demo', 'can i get a demo', 'request demo', 
+                'try demo', 'demo please', 'demonstration', 'book a demo', 'schedule a demo',
+                'sign up for demo', 'get a demo', 'demo session', 'product demo', 'live demo',
+                # Call-related phrases that should also trigger demo form
+                'book a call', 'schedule a call', 'book call', 'schedule call', 'want a call',
+                'request a call', 'call me', 'phone call', 'sales call', 'consultation call',
+                'speak with someone', 'talk to sales', 'contact sales', 'sales consultation',
+                'schedule consultation', 'book consultation', 'arrange a call', 'set up a call'
+            ]
+            message_lower = message.lower()
+            
+            # Check for explicit demo requests (more specific matching)
+            show_demo_form = False
+            for phrase in demo_request_phrases:
+                if phrase in message_lower:
+                    show_demo_form = True
+                    break
+            
+            # Also check for "yes" responses only if the bot recently asked about demo
+            if not show_demo_form and 'yes' in message_lower:
+                # Check if the conversation context suggests this is a demo response
+                recent_context = ' '.join([msg['content'] for msg in session.get('conversation_history', [])[-3:]])
+                if 'demo' in recent_context.lower() or 'demonstration' in recent_context.lower():
+                    show_demo_form = True
+            
+            # Track negative demo responses to avoid future prompts
             negative_demo_words = ['no demo', 'not interested', 'do not want', "don't want", 'no thanks', 
                                  'not now', 'maybe later', 'not ready', 'just browsing', 'just looking',
                                  'decline', 'pass', 'skip demo', 'no need', 'not necessary']
-            
-            has_negative_intent = any(phrase in message.lower() for phrase in negative_demo_words)
-            
-            # Only show demo form if positive intent and no negative intent
-            if not has_negative_intent and (lead_score >= 40 or 
-                any(phrase in bot_message.lower() for phrase in ['demo', 'schedule', 'call', 'meeting']) or
-                any(phrase in message.lower() for phrase in ['demo', 'interested', 'schedule', 'call'])):
-                show_demo_form = True
-                
-            # Track negative demo responses to avoid future prompts
+            has_negative_intent = any(phrase in message_lower for phrase in negative_demo_words)
             if has_negative_intent:
                 session['demo_declined'] = True
+                show_demo_form = False
             
             return {
                 'message': bot_message,
-                'show_demo_form': show_demo_form
+                'show_demo_form': show_demo_form,
+                'tofu_data': {
+                    'engagement_strategy': engagement_strategy,
+                    'lead_score': session.get('lead_score', 0),
+                    'qualification_signals': session.get('qualification_signals', []),
+                    'touch_count': session.get('touch_count', 0)
+                }
             }
             
         except Exception as e:
@@ -713,3 +775,139 @@ Are you currently evaluating other WMS solutions? I can do a detailed comparison
                 'message': "I'm experiencing a technical issue right now. Please try asking your question again, or feel free to contact our sales team directly at sales@onpalms.com for immediate assistance.",
                 'show_demo_form': False
             }
+    
+    # TOFU Enhancement Methods
+    def enhanced_lead_qualification(self, message, session):
+        """Enhanced TOFU-based lead qualification"""
+        message_lower = message.lower()
+        
+        # TOFU Qualification Criteria
+        qualification_signals = {
+            'intent_signals': {
+                'high': ['need solution', 'looking for', 'evaluating', 'budget approved', 'decision maker', 'procurement'],
+                'medium': ['interested in', 'want to know', 'considering', 'exploring options'],
+                'low': ['just curious', 'browsing', 'maybe later', 'just looking']
+            },
+            'authority_signals': {
+                'high': ['ceo', 'cto', 'warehouse manager', 'operations director', 'procurement manager'],
+                'medium': ['supervisor', 'team lead', 'analyst', 'coordinator'],
+                'low': ['intern', 'student', 'researcher']
+            },
+            'timeline_signals': {
+                'urgent': ['asap', 'immediately', 'this quarter', 'next month'],
+                'near_term': ['in 3 months', 'this year', 'soon'],
+                'long_term': ['next year', 'future', 'someday']
+            },
+            'budget_signals': {
+                'confirmed': ['budget approved', 'funds allocated', 'ready to purchase'],
+                'exploring': ['budget planning', 'cost analysis', 'roi calculation'],
+                'unclear': ['just researching', 'preliminary']
+            }
+        }
+        
+        # Calculate enhanced qualification score
+        for category, signals in qualification_signals.items():
+            for level, keywords in signals.items():
+                for keyword in keywords:
+                    if keyword in message_lower:
+                        if level == 'high' or level == 'urgent' or level == 'confirmed':
+                            session['lead_score'] = session.get('lead_score', 0) + 25
+                            session['qualification_signals'] = session.get('qualification_signals', [])
+                            session['qualification_signals'].append(f"{category}_{level}")
+                        elif level == 'medium' or level == 'near_term' or level == 'exploring':
+                            session['lead_score'] = session.get('lead_score', 0) + 15
+                        else:
+                            session['lead_score'] = session.get('lead_score', 0) + 5
+        
+        return session
+
+    def get_tofu_engagement_strategy(self, session):
+        """Determine engagement strategy based on TOFU principles"""
+        lead_score = session.get('lead_score', 0)
+        signals = session.get('qualification_signals', [])
+        
+        if lead_score >= 75 or any('high' in signal for signal in signals):
+            return 'direct_sales'  # Ready for demo/sales call
+        elif lead_score >= 40:
+            return 'nurture_warm'  # Provide detailed info, case studies
+        elif lead_score >= 20:
+            return 'nurture_cold'  # Educational content, build trust
+        else:
+            return 'awareness'     # Basic information, qualify further
+
+    def get_tofu_conversation_flow(self, message, session, engagement_strategy):
+        """TOFU-based conversation flow management - only for next-step guidance"""
+        
+        # Only provide TOFU responses for general inquiries or next-step questions
+        # Not for specific content questions
+        message_lower = message.lower()
+        
+        # Check if this is a next-step type question
+        is_next_step_question = any(phrase in message_lower for phrase in [
+            'what now', 'next step', 'what should', 'how do i proceed', 
+            'what do you recommend', 'ready to move', 'lets go', "let's proceed"
+        ])
+        
+        if not is_next_step_question:
+            return None  # Let the main AI response handle content questions
+        
+        flows = {
+            'awareness': {
+                'touch_1': "I'd love to help you understand warehouse management solutions! Are you currently facing any specific challenges with inventory accuracy, order processing speed, or warehouse efficiency?",
+                'touch_2': "Many businesses struggle with warehouse optimization. PALMS™ helps companies achieve 99.9% inventory accuracy and 40% faster operations. What's your biggest warehouse pain point?",
+                'touch_3': "Based on our conversation, it sounds like you're exploring options. Would it be helpful if I shared some success stories from businesses similar to yours?"
+            },
+            'nurture_cold': {
+                'touch_1': "Great questions! Let me share how PALMS™ specifically addresses those challenges with real measurable results...",
+                'touch_2': "I can see you're evaluating your options carefully. Here's how we compare to other solutions in the market...",
+                'touch_3': "Based on your requirements, I'd like to show you some relevant case studies. What industry are you in?"
+            },
+            'nurture_warm': {
+                'touch_1': "Excellent - you clearly understand the value of a robust WMS. Let me provide specific ROI calculations for businesses like yours...",
+                'touch_2': "Your questions show you're serious about implementation. Would you like to see a customized demo showing how PALMS™ handles your specific requirements?",
+                'touch_3': "I can tell you're ready to move forward. Let's schedule a personalized consultation to map out your implementation timeline and ROI projections."
+            },
+            'direct_sales': {
+                'touch_1': "Perfect! Based on your needs and timeline, PALMS™ is exactly what you're looking for. I'd like to connect you with our senior solutions consultant for a detailed demo.",
+                'touch_2': "Your requirements align perfectly with our enterprise solutions. Let's schedule a technical deep-dive session with our implementation team.",
+                'touch_3': "Great! I can connect you with our sales team who can provide detailed pricing and create a customized implementation plan for your business."
+            }
+        }
+        
+        touch_count = session.get('touch_count', 0) + 1
+        session['touch_count'] = touch_count
+        
+        # Select appropriate response based on engagement strategy and touch count
+        if engagement_strategy in flows:
+            touch_key = f'touch_{min(touch_count, 3)}'
+            return flows[engagement_strategy].get(touch_key, None)
+        
+        return None
+
+    def get_qualifying_questions(self, engagement_strategy, session):
+        """Smart qualifying questions based on TOFU stage"""
+        
+        questions = {
+            'awareness': [
+                "What brings you to explore warehouse management solutions today?",
+                "Are you currently using any WMS or still managing inventory manually?",
+                "What's your biggest warehouse challenge right now?"
+            ],
+            'nurture_cold': [
+                "What's your current warehouse size and daily order volume?",
+                "How are you handling inventory accuracy issues currently?",
+                "What's your timeline for implementing a new system?"
+            ],
+            'nurture_warm': [
+                "Who else is involved in this decision-making process?",
+                "What's your budget range for a WMS implementation?",
+                "When would you ideally like to go live with a new system?"
+            ],
+            'direct_sales': [
+                "Would you like to schedule a demo for next week?",
+                "Who would be the key stakeholders for this decision?",
+                "What's your procurement process for software purchases?"
+            ]
+        }
+        
+        return questions.get(engagement_strategy, questions['awareness'])

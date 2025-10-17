@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: palms-chatbot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app.py
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ALLOW_RESET
+        value: "TRUE"
+      - key: FLASK_DEBUG
+        value: "False"

@@ -544,6 +544,11 @@
                     <small style="color: #ef4444; font-size: 13px;">Please use your business email (not Gmail, Yahoo, etc.)</small>
                 </div>
                 
+                <div class="form-group">
+                    <label for="demoPhone">Phone Number (optional)</label>
+                    <input type="tel" id="demoPhone" placeholder="+1 234 567 8901">
+                </div>
+                
                 <div class="form-buttons">
                     <button type="button" class="btn btn-secondary" onclick="closeDemoModal()">Cancel</button>
                     <button type="submit" class="btn btn-primary">Schedule Demo</button>
@@ -710,12 +715,11 @@
             
             const name = document.getElementById('demoName').value;
             const email = document.getElementById('demoEmail').value;
-            
+            const phone = document.getElementById('demoPhone').value;
             if (!name || !email) {
-                alert('Please fill in all fields.');
+                alert('Please fill in all mandatory fields (Name and Business Email).');
                 return;
             }
-            
             fetch('/submit_demo', {
                 method: 'POST',
                 headers: {
@@ -724,6 +728,7 @@
                 body: JSON.stringify({
                     name: name,
                     email: email,
+                    phone: phone,
                     session_id: sessionId
                 })
             })
