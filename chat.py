@@ -4,8 +4,6 @@ from dotenv import load_dotenv
 import re
 import json
 import chromadb
-from sentence_transformers import SentenceTransformer
-import numpy as np
 from email_validator import validate_email, EmailNotValidError
 
 load_dotenv()
@@ -33,10 +31,7 @@ class SalesBotRAG:
                 print("Running in enhanced demo mode...")
                 self.client = None
         
-        # Initialize sentence transformer for embeddings
-        self.embedder = SentenceTransformer('all-MiniLM-L6-v2')
-        
-        # Initialize ChromaDB for RAG
+        # Initialize ChromaDB for RAG (without sentence transformers)
         self.chroma_client = chromadb.PersistentClient(path="./chroma_db")
         self.collection = self.get_or_create_collection()
         
@@ -155,6 +150,24 @@ class SalesBotRAG:
                     print(f"❌ Failed to create collection even after reset: {reset_error}")
                     raise reset_error
 
+    def get_embedding(self, text):
+        """Generate embeddings using OpenAI API instead of sentence transformers"""
+        try:
+            if not self.client:
+                # Fallback to simple hash-based pseudo-embedding for demo mode
+                return [hash(text) % 100 / 100.0] * 384  # 384 dimensions for compatibility
+            
+            # Use OpenAI's text-embedding-3-small model (more memory efficient)
+            response = self.client.embeddings.create(
+                input=text,
+                model="text-embedding-3-small"
+            )
+            return response.data[0].embedding
+        except Exception as e:
+            print(f"Error generating embedding: {e}")
+            # Fallback embedding
+            return [hash(text) % 100 / 100.0] * 384
+
     def load_knowledge_base(self):
         """Load and process the info.txt file into ChromaDB"""
         try:
@@ -198,8 +211,8 @@ class SalesBotRAG:
             
             for i, chunk in enumerate(chunks):
                 if len(chunk.strip()) > 50:  # Only process meaningful chunks
-                    embedding = self.embedder.encode(chunk)
-                    embeddings.append(embedding.tolist())
+                    embedding = self.get_embedding(chunk)
+                    embeddings.append(embedding)
                     documents.append(chunk)
                     metadatas.append({"chunk_id": i, "type": "product_info"})
                     ids.append(f"chunk_{i}")
@@ -284,9 +297,9 @@ class SalesBotRAG:
                 print("Knowledge base is empty")
                 return ""
                 
-            query_embedding = self.embedder.encode(query)
+            query_embedding = self.get_embedding(query)
             results = self.collection.query(
-                query_embeddings=[query_embedding.tolist()],
+                query_embeddings=[query_embedding],
                 n_results=n_results
             )
             

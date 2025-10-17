@@ -9,10 +9,11 @@ openai==1.51.0
 # Environment Variables
 python-dotenv==1.0.1
 
-# AI/ML Libraries
-sentence-transformers==3.1.1
-chromadb==0.5.7
-numpy==1.26.4
+# Lightweight ChromaDB without heavy dependencies
+chromadb==0.4.22
+
+# NumPy - Pin to 1.x for ChromaDB compatibility (2.0+ breaks chromadb 0.4.22)
+numpy<2.0.0
 
 # Utilities
 email-validator==2.2.0
