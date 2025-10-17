@@ -1,10 +1,10 @@
-import openai
 import os
 from dotenv import load_dotenv
 import re
 import json
 import chromadb
 from email_validator import validate_email, EmailNotValidError
+from openai import OpenAI
 
 load_dotenv()
 
