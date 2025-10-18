@@ -3,8 +3,8 @@ Flask==3.0.0
 flask-cors==4.0.1
 gunicorn==21.2.0
 
-# OpenAI Integration
-openai==1.51.0
+# OpenAI Integration - latest version with better compatibility
+openai==1.54.3
 
 # Environment Variables
 python-dotenv==1.0.1

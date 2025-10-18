@@ -4,7 +4,6 @@ import re
 import json
 import chromadb
 from email_validator import validate_email, EmailNotValidError
-from openai import OpenAI
 
 load_dotenv()
 
@@ -22,9 +21,29 @@ class SalesBotRAG:
             self.client = None
         else:
             try:
+                # Import OpenAI here to avoid conflicts with ChromaDB initialization
+                from openai import OpenAI
+                
                 # Use the correct OpenAI client initialization for openai>=1.x
-                self.client = OpenAI(api_key=api_key)
+                # Explicitly avoid any proxy or extra parameters that might be injected
+                self.client = OpenAI(
+                    api_key=api_key,
+                    timeout=30.0,
+                    max_retries=2
+                )
                 print("✅ OpenAI client initialized with GPT-4o")
+            except TypeError as te:
+                # Handle specific initialization errors
+                print(f"❌ OpenAI initialization failed (TypeError): {te}")
+                try:
+                    # Fallback: try with minimal parameters only
+                    from openai import OpenAI
+                    self.client = OpenAI(api_key=api_key)
+                    print("✅ OpenAI client initialized with minimal config")
+                except Exception as fallback_error:
+                    print(f"❌ OpenAI fallback initialization also failed: {fallback_error}")
+                    print("Running in enhanced demo mode...")
+                    self.client = None
             except Exception as e:
                 print(f"❌ OpenAI initialization failed: {e}")
                 print("Running in enhanced demo mode...")
