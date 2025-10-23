@@ -148,6 +148,23 @@ class SalesBotRAG:
             # Try to get existing collection
             collection = self.chroma_client.get_collection(collection_name)
             print(f"✅ Found existing collection: {collection_name}")
+            
+            # Check if we need to reset due to embedding dimension change
+            try:
+                test_embedding = self.get_embedding("test")
+                if collection.count() > 0:
+                    # Try a test query to check dimension compatibility
+                    collection.query(query_embeddings=[test_embedding], n_results=1)
+                    print(f"✅ Collection dimensions compatible")
+            except Exception as dim_error:
+                if "expecting embedding with dimension" in str(dim_error):
+                    print(f"⚠️  Dimension mismatch detected, resetting collection...")
+                    self.chroma_client.delete_collection(collection_name)
+                    collection = self.chroma_client.create_collection(collection_name)
+                    print(f"✅ Created new collection with correct dimensions")
+                else:
+                    raise dim_error
+                    
             return collection
         except Exception as e:
             print(f"Collection not found, creating new one: {e}")
