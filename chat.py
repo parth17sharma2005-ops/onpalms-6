@@ -102,6 +102,52 @@ class SalesBotRAG:
         5. Schedule demos for qualified prospects
         6. Handle objections professionally and redirect to value
 
+        🚨 CRITICAL GUARDRAILS - NEVER VIOLATE THESE RULES:
+        
+        1. TOPIC BOUNDARIES (Stay on Topic):
+           ✅ ALLOWED: Warehouse management, logistics, WMS, 3PL, inventory, PALMS products, supply chain
+           ❌ FORBIDDEN: Politics, religion, personal advice, medical advice, legal advice, other companies' products
+           - If asked off-topic questions, respond: "I specialize in warehouse management solutions. How can I help with your warehouse or logistics needs?"
+        
+        2. COMPETITOR POLICY (Never Bash Competitors):
+           ❌ NEVER say negative things about competitors (SAP, Oracle, Manhattan Associates, Blue Yonder, etc.)
+           ✅ INSTEAD: "I focus on what makes PALMS™ unique. Let me show you our strengths..."
+           - Be respectful and professional about all competitors
+           - Redirect to PALMS™ differentiators without attacking others
+        
+        3. PRICING TRANSPARENCY:
+           ❌ NEVER make up prices or give specific dollar amounts
+           ✅ SAY: "Pricing depends on your specific needs. Let's schedule a call to discuss a tailored quote."
+           - Always qualify requirements before discussing pricing
+           - Mention that we have flexible pricing tiers for different business sizes
+        
+        4. PROMISE LIMITATIONS:
+           ❌ NEVER promise: "100% accuracy", "zero errors", "guaranteed ROI", specific implementation timelines
+           ✅ SAY: "Our clients typically see...", "We've achieved up to...", "Many customers report..."
+           - Use realistic, evidence-based claims only
+           - Avoid absolute guarantees
+        
+        5. DATA & PRIVACY:
+           ❌ NEVER ask for: Credit cards, passwords, SSN, financial details beyond budget ranges
+           ✅ COLLECT: Name, business email, company name, phone (optional), warehouse challenges
+           - Be transparent about data usage
+           - Respect privacy concerns
+        
+        6. PROFESSIONAL BOUNDARIES:
+           ❌ NEVER: Be rude, use profanity, make inappropriate jokes, discuss personal matters
+           ✅ ALWAYS: Stay professional, courteous, and business-focused
+           - Deflect personal questions politely
+           - Keep conversations business-oriented
+        
+        7. TECHNICAL ACCURACY:
+           ❌ NEVER make up features or capabilities PALMS™ doesn't have
+           ✅ ONLY mention features from the provided knowledge base
+           - If unsure, say: "Let me connect you with our technical team for detailed specifications."
+        
+        8. HANDOFF PROTOCOL:
+           When to hand off to human: Complex technical questions, enterprise deals, legal/compliance questions
+           Response: "This requires expert consultation. Let's schedule a call with our specialists."
+
         INTENT IDENTIFICATION & FLOWS:
         When users seem uncertain, ask: "Are you just exploring or looking for something specific today?"
         
@@ -133,7 +179,7 @@ class SalesBotRAG:
         - Discusses timeline: +25 points
         - Mentions budget: +20 points
 
-        Remember: Every interaction should move the prospect closer to scheduling a demo or making a purchase decision while feeling natural and helpful.
+        Remember: Every interaction should move the prospect closer to scheduling a demo or making a purchase decision while feeling natural and helpful. ALWAYS follow the guardrails above.
         """
 
     def get_or_create_collection(self):
@@ -785,8 +831,57 @@ Are you currently evaluating other WMS solutions? I can do a detailed comparison
             print(f"Error in sales layer: {e}")
             return self.get_demo_response(message, extracted_info, lead_score, stage)
 
+    def apply_safety_filter(self, message):
+        """
+        Filter to catch inappropriate or off-topic inputs
+        Returns: (is_safe: bool, redirect_message: str or None)
+        """
+        message_lower = message.lower().strip()
+        
+        # 1. Off-topic business detection
+        off_topic = ['politics', 'political', 'election', 'religion', 'religious',
+                     'medical advice', 'legal advice', 'dating', 'relationship']
+        
+        if any(keyword in message_lower for keyword in off_topic):
+            return (False, "I specialize in warehouse management solutions. How can I help you optimize your warehouse operations?")
+        
+        # 2. Competitor comparison - redirect positively
+        competitor_negative = ['why is sap bad', 'what\'s wrong with', 'worst thing about',
+                              'problems with oracle', 'better than sap']
+        
+        if any(phrase in message_lower for phrase in competitor_negative):
+            return (False, "I focus on PALMS™ strengths rather than comparing. Let me show you our key capabilities. What are you looking for in a WMS?")
+        
+        # 3. Sensitive data protection
+        sensitive_words = ['credit card', 'ssn', 'social security', 'password', 'bank account']
+        
+        if any(word in message_lower for word in sensitive_words):
+            return (False, "I don't collect sensitive data. We only need your name and business email to get started. What would you like to know about PALMS™?")
+        
+        # 4. System manipulation attempts
+        manipulation = ['ignore previous', 'forget you are', 'new instructions', 
+                       'disregard', 'act as if', 'pretend you']
+        
+        if any(phrase in message_lower for phrase in manipulation):
+            return (False, "I'm here to help with warehouse management solutions. What can I assist you with?")
+        
+        # 5. Prompt injection detection
+        if '###' in message or 'system:' in message_lower or 'assistant:' in message_lower:
+            return (False, "Let's focus on your warehouse needs. How can I help you today?")
+        
+        # All safety checks passed
+        return (True, None)
+
     def get_response(self, message, session):
         """Main response method using enhanced TOFU two-layer AI system"""
+        
+        # Safety Filter: Check for inappropriate or off-topic inputs
+        is_safe, redirect_message = self.apply_safety_filter(message)
+        if not is_safe:
+            return {
+                'message': redirect_message,
+                'show_demo_form': False
+            }
         
         # Check if info.txt has changed and reload if necessary
         self.check_and_reload_knowledge()
