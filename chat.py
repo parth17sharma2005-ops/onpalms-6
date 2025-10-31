@@ -24,28 +24,23 @@ class SalesBotRAG:
                 # Import OpenAI here to avoid conflicts with ChromaDB initialization
                 from openai import OpenAI
                 
-                # Use the correct OpenAI client initialization for openai>=1.x
-                # Explicitly avoid any proxy or extra parameters that might be injected
-                self.client = OpenAI(
-                    api_key=api_key,
-                    timeout=30.0,
-                    max_retries=2
-                )
-                print("✅ OpenAI client initialized with GPT-4o")
-            except TypeError as te:
-                # Handle specific initialization errors
-                print(f"❌ OpenAI initialization failed (TypeError): {te}")
+                # Initialize with only the API key (most compatible with all versions)
+                # The openai>=1.54.3 library doesn't support proxies parameter
+                self.client = OpenAI(api_key=api_key)
+                print("✅ OpenAI client initialized successfully")
+                
+                # Test the client with a simple call
                 try:
-                    # Fallback: try with minimal parameters only
-                    from openai import OpenAI
-                    self.client = OpenAI(api_key=api_key)
-                    print("✅ OpenAI client initialized with minimal config")
-                except Exception as fallback_error:
-                    print(f"❌ OpenAI fallback initialization also failed: {fallback_error}")
-                    print("Running in enhanced demo mode...")
-                    self.client = None
+                    # Verify the client works
+                    _ = self.client.models.list()
+                    print("✅ OpenAI API connection verified")
+                except Exception as test_error:
+                    print(f"⚠️ OpenAI client created but API test failed: {test_error}")
+                    print("Will attempt to use client anyway...")
+                    
             except Exception as e:
                 print(f"❌ OpenAI initialization failed: {e}")
+                print(f"Error type: {type(e).__name__}")
                 print("Running in enhanced demo mode...")
                 self.client = None
         
