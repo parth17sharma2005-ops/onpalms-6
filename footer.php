@@ -574,13 +574,21 @@ if ( ! function_exists( 'elementor_theme_do_location' ) || ! elementor_theme_do_
         }
         
         msg.className = className;
-        // Format messages with comprehensive markdown-like styling (matching backend)
-        const formattedMessage = text
-            .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>') // **bold** to <b>
-            .replace(/### (.*?):/g, '<h4 style="margin: 10px 0 5px 0; font-weight: bold; color: #2c5aa0;">$1:</h4>') // ### Header: to <h4>
-            .replace(/^• (.*$)/gm, '<div style="margin: 5px 0; padding-left: 15px;">• $1</div>') // • bullet to div
-            .replace(/^\- (.*$)/gm, '<div style="margin: 5px 0; padding-left: 15px;">• $1</div>') // - bullet to div
-            .replace(/\n/g, '<br>'); // Line breaks
+        
+        // Format messages with proper HTML conversion
+        let formattedMessage = text;
+        
+        // Convert markdown-style headers (### Header:) to bold text WITHOUT the hashtags
+        formattedMessage = formattedMessage.replace(/###\s*(.*?)[:：]/g, '<strong>$1:</strong>');
+        
+        // Convert **bold** to <strong>
+        formattedMessage = formattedMessage.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        
+        // Convert bullet points (• or -) to properly styled divs
+        formattedMessage = formattedMessage.replace(/^[•\-]\s+(.*)$/gm, '<div style="margin: 4px 0; padding-left: 15px;">• $1</div>');
+        
+        // Convert line breaks
+        formattedMessage = formattedMessage.replace(/\n/g, '<br>');
         
         msg.innerHTML = formattedMessage;
         body.appendChild(msg);
@@ -794,14 +802,20 @@ if ( ! function_exists( 'elementor_theme_do_location' ) || ! elementor_theme_do_
             
             const data = await response.json();
             console.log('Response data:', data);
+            console.log('data.message value:', data.message);
+            console.log('data.message type:', typeof data.message);
+            console.log('data.error value:', data.error);
             palmsRemoveTyping();
             
             if (data.error) {
+                console.log('ERROR PATH: Displaying error message');
                 palmsAddMessage(data.error, false);
                 return;
             }
             
             const botText = data.message || "Sorry, I couldn't process your request.";
+            console.log('botText final value:', botText);
+            console.log('About to call palmsAddMessage with:', botText);
             palmsAddMessage(botText, false);
             
             // Show demo form if requested (matching backend trigger)

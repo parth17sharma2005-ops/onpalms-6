@@ -728,25 +728,36 @@ Are you currently evaluating other WMS solutions? I can do a detailed comparison
             
             CURRENT USER MESSAGE: {message}
             
-            RESPONSE GUIDELINES:
-            1. If user asks about "products" or "what products" - provide ONLY product names with brief one-line descriptions using bullet points
-            2. If user asks about a SPECIFIC product (e.g., "tell me about PALMS WMS") - provide a concise 4-5 line description with key benefits
-            3. If user asks for "features" or "details" of a product - then provide comprehensive bullet point list
-            4. Keep other responses to 2 lines maximum unless user asks for detailed explanation
-            5. Be direct and answer their specific question first
-            6. Respect demo decline status - don't push if they said no to demos
-            7. Use extracted information to be accurate and helpful
-            8. Add one brief follow-up question or next step if relevant
-            9. Be context-aware - don't repeat previous information
-            10. Demo declined status: {session.get('demo_declined', False)}
+            RESPONSE GUIDELINES - SMART LENGTH CONTROL:
+            
+            **CRITICAL: Read the user's question carefully to determine desired detail level**
+            
+            1. General questions ("tell me about features", "what can palms do"):
+               - Give 2-3 sentence overview highlighting TOP 3-4 capabilities only
+               - Example: "PALMS™ offers comprehensive WMS capabilities including real-time inventory tracking, automated order processing, and AI-driven space optimization. We also provide mobile solutions, 3PL management, and advanced analytics. Which area interests you most?"
+            
+            2. Product list questions ("what products", "list products"):
+               - Show ONLY product names with ONE-LINE descriptions using bullet points
+               - Maximum 8-9 products with brief tags
+            
+            3. Specific product questions ("tell me about WMS", "what is 3PL"):
+               - Provide 4-5 lines max with key benefits
+               - Focus on value, not feature lists
+            
+            4. Detailed feature requests ("show all WMS features", "comprehensive features", "full feature list"):
+               - ONLY THEN provide complete feature lists with categories
+               - Use bullet points organized by category
+            
+            5. Always ask a follow-up question to understand what they really need
+            
+            6. Respect demo decline status: {session.get('demo_declined', False)}
             
             FORMATTING REQUIREMENTS:
-            - For product lists: ALWAYS use bullet points (•) with one-line descriptions
-            - For specific product descriptions: Use normal text, maximum 4-5 lines, highlight key benefits
-            - For feature lists: ALWAYS use bullet points (•) for each feature
-            - For multiple items: ALWAYS use bullet points (•)
-            - Never use numbered lists (1, 2, 3) - always use bullet points (•)
-            - Be conversational and concise
+            - Use bullet points (•) for lists, never numbered lists
+            - DO NOT use ### headers or markdown headers - just use **bold text** for emphasis
+            - Keep responses SHORT unless explicitly asked for comprehensive details
+            - Maximum response length: 6-8 lines for general questions
+            - Be conversational and direct
             
             INTENT IDENTIFICATION (use when appropriate):
             If user seems uncertain or new, offer: "Are you just exploring or looking for something specific today?"
