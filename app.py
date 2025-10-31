@@ -12,7 +12,13 @@ from datetime import datetime
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
+
+# Configure CORS to allow requests from anywhere (production and testing)
+CORS(app, 
+     origins=['*'],  # Allow all origins
+     allow_headers=['Content-Type', 'Authorization', 'X-Session-Id', 'Accept'],
+     methods=['GET', 'POST', 'OPTIONS'],
+     supports_credentials=True)
 
 # Initialize the chatbot
 chatbot = SalesBotRAG()
