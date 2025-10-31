@@ -203,13 +203,19 @@ class SalesBotRAG:
             # Fallback embedding
             return [hash(text) % 100 / 100.0] * 384
 
-    def load_knowledge_base(self):
+    def load_knowledge_base(self, force_reload=False):
         """Load and process the info.txt file into ChromaDB"""
         try:
             # Check if collection is already populated
-            if self.collection.count() > 0:
+            if self.collection.count() > 0 and not force_reload:
                 print(f"Knowledge base already loaded with {self.collection.count()} chunks")
                 return
+                
+            # If force_reload, clear existing collection
+            if force_reload:
+                print("Force reloading knowledge base...")
+                self.collection.delete(where={"type": "product_info"})
+                print("Existing knowledge base cleared")
             
             # Try to load the info.txt file
             info_file_path = 'info.txt'
@@ -313,29 +319,50 @@ class SalesBotRAG:
         Contact: sales@onpalms.com, Phone: +91 79755 52867
         """
 
-    def split_content_into_chunks(self, content, chunk_size=500, overlap=50):
+    def split_content_into_chunks(self, content, chunk_size=2000, overlap=200):
         """Split content into overlapping chunks for better retrieval"""
-        words = content.split()
+        # Split by major sections first
+        sections = content.split('\n##')
         chunks = []
         
-        for i in range(0, len(words), chunk_size - overlap):
-            chunk = ' '.join(words[i:i + chunk_size])
-            if chunk.strip():
-                chunks.append(chunk)
+        for section in sections:
+            if not section.strip():
+                continue
+                
+            # For large sections, split into smaller chunks
+            words = section.split()
+            if len(words) > chunk_size:
+                for i in range(0, len(words), chunk_size - overlap):
+                    chunk = ' '.join(words[i:i + chunk_size])
+                    if chunk.strip():
+                        chunks.append('##' + chunk if i == 0 else chunk)
+            else:
+                # Keep small sections intact
+                chunks.append('##' + section if not section.startswith('##') else section)
         
         return chunks
 
-    def retrieve_relevant_context(self, query, n_results=3):
+    def retrieve_relevant_context(self, query, n_results=10):
         """Retrieve relevant context from the knowledge base"""
         try:
             if self.collection.count() == 0:
                 print("Knowledge base is empty")
                 return ""
                 
+            # Extract main topic from query for better context retrieval
+            query_lower = query.lower()
+            if 'product' in query_lower or 'products' in query_lower:
+                query_sections = ['## Core Products', '## Product Overview']
+            elif 'feature' in query_lower or 'features' in query_lower:
+                query_sections = ['Features:', 'Capabilities:', 'Technical Capabilities']
+            else:
+                query_sections = None
+                
             query_embedding = self.get_embedding(query)
             results = self.collection.query(
                 query_embeddings=[query_embedding],
-                n_results=n_results
+                n_results=n_results,
+                where={"type": "product_info"} if not query_sections else None
             )
             
             if results and 'documents' in results and results['documents']:
@@ -456,6 +483,15 @@ class SalesBotRAG:
         message_lower = message.lower()
         conversation_history = session.get('conversation_history', [])
         
+        # Check if user is asking for complete list
+        if any(phrase in message_lower for phrase in ['all products', 'complete list', 'full list', 'show everything', 'list all']):
+            complete_info = self.get_complete_product_list(relevant_context)
+            return f"""Here's our complete product and feature list:
+
+{complete_info}
+
+Would you like me to focus on any specific aspect?"""
+        
         # Extract specific information from context for more targeted responses
         def extract_context_info(context, keywords):
             """Extract specific information from context based on keywords"""
@@ -474,18 +510,18 @@ class SalesBotRAG:
         
         # Products and solutions inquiries
         if any(word in message_lower for word in ['products', 'solutions', 'all products', 'what do you offer', 'modules', 'editions']):
-            products_info = extract_context_info(relevant_context, ['wms', '3pl', 'enterprise', 'mobile', 'analytics'])
-            return f"""PALMS™ offers a complete suite of warehouse management solutions:
+            # Get complete product information
+            sections = relevant_context.split('\n##')
+            products_section = ""
+            for section in sections:
+                if 'Core Products' in section or 'Product Overview' in section:
+                    products_section += section
+            
+            return f"""PALMS™ Complete Product Suite:
 
-• **PALMS™ WMS** - Core warehouse management with 99.9% inventory accuracy
-• **PALMS™ 3PL** - Third-party logistics with multi-client management  
-• **PALMS™ Enterprise** - Large-scale operations with advanced customization
-• **PALMS™ Mobile** - Mobile operations and barcode scanning
-• **PALMS™ Analytics** - Business intelligence and reporting platform
+{products_section}
 
-Each solution delivers 40% faster picking and dramatically improves warehouse efficiency. {products_info}
-
-What's your warehouse size and industry so I can recommend the perfect fit for your operation?"""
+Would you like detailed information about any specific product or feature?"""
         
         # Greeting responses with context awareness
         elif any(word in message_lower for word in ['hello', 'hi', 'hey', 'good morning', 'good afternoon']):
@@ -621,9 +657,14 @@ Are you currently evaluating other WMS solutions? I can do a detailed comparison
     def get_information_layer_response(self, message, relevant_context):
         """Layer 1: Information Retrieval - Extract relevant facts from knowledge base"""
         if not self.client:
-            return relevant_context[:500]  # Fallback for demo mode
+            # Enhanced demo mode to handle full lists
+            query_lower = message.lower()
+            if any(word in query_lower for word in ['all products', 'all features', 'complete list', 'full list', 'every product', 'every feature']):
+                return relevant_context  # Return full context for list requests
+            return relevant_context[:1000]  # Larger default slice for demo mode
             
         try:
+            # Enhanced prompt for complete list handling
             prompt = f"""
             {self.retrieval_prompt}
             
@@ -632,8 +673,16 @@ Are you currently evaluating other WMS solutions? I can do a detailed comparison
             
             USER QUERY: {message}
             
-            Extract and return only the most relevant factual information that answers the user's query.
-            Focus on specific features, benefits, metrics, and technical details.
+            SPECIAL INSTRUCTIONS:
+            1. If user asks about "products" or "what products" - extract ONLY product names and one-line descriptions
+            2. If user asks about a SPECIFIC product or asks for "details" or "features" - include ALL details
+            3. For product/feature lists when details are requested, maintain the full hierarchy and all bullet points
+            4. Do not provide detailed features unless specifically asked
+            5. Preserve all technical specifications and metrics when details are requested
+            6. Keep responses concise unless explicitly asked for comprehensive information
+            
+            Extract and return the appropriate level of information based on the user's query.
+            Focus on matching the user's intent - brief overview vs. detailed information.
             """
             
             response = self.client.chat.completions.create(
@@ -642,7 +691,7 @@ Are you currently evaluating other WMS solutions? I can do a detailed comparison
                     {"role": "system", "content": prompt},
                     {"role": "user", "content": message}
                 ],
-                max_tokens=400,
+                max_tokens=2000,  # Increased to allow complete product/feature extraction
                 temperature=0.2  # Lower temperature for factual accuracy
             )
             
@@ -685,20 +734,24 @@ Are you currently evaluating other WMS solutions? I can do a detailed comparison
             CURRENT USER MESSAGE: {message}
             
             RESPONSE GUIDELINES:
-            1. Keep responses to 2 lines maximum unless user asks for detailed explanation
-            2. Be direct and answer their specific question first
-            3. Respect demo decline status - don't push if they said no to demos
-            4. Use extracted information to be accurate and helpful
-            5. Add one brief follow-up question or next step if relevant
-            6. Be context-aware - don't repeat previous information
-            7. Demo declined status: {session.get('demo_declined', False)}
+            1. If user asks about "products" or "what products" - provide ONLY product names with brief one-line descriptions using bullet points
+            2. If user asks about a SPECIFIC product (e.g., "tell me about PALMS WMS") - provide a concise 4-5 line description with key benefits
+            3. If user asks for "features" or "details" of a product - then provide comprehensive bullet point list
+            4. Keep other responses to 2 lines maximum unless user asks for detailed explanation
+            5. Be direct and answer their specific question first
+            6. Respect demo decline status - don't push if they said no to demos
+            7. Use extracted information to be accurate and helpful
+            8. Add one brief follow-up question or next step if relevant
+            9. Be context-aware - don't repeat previous information
+            10. Demo declined status: {session.get('demo_declined', False)}
             
             FORMATTING REQUIREMENTS:
-            - Maximum 2 lines unless user specifically asks for more details
-            - Line 1: Direct answer to their question with key facts
-            - Line 2: Brief follow-up or next step (if appropriate)
-            - Use bullet points only if they ask about multiple items
-            - Be conversational but concise
+            - For product lists: ALWAYS use bullet points (•) with one-line descriptions
+            - For specific product descriptions: Use normal text, maximum 4-5 lines, highlight key benefits
+            - For feature lists: ALWAYS use bullet points (•) for each feature
+            - For multiple items: ALWAYS use bullet points (•)
+            - Never use numbered lists (1, 2, 3) - always use bullet points (•)
+            - Be conversational and concise
             
             INTENT IDENTIFICATION (use when appropriate):
             If user seems uncertain or new, offer: "Are you just exploring or looking for something specific today?"
@@ -716,7 +769,7 @@ Are you currently evaluating other WMS solutions? I can do a detailed comparison
                     {"role": "system", "content": prompt},
                     {"role": "user", "content": message}
                 ],
-                max_tokens=400,
+                max_tokens=1500,  # Increased to allow complete product/feature lists
                 temperature=0.7
             )
             
@@ -728,6 +781,9 @@ Are you currently evaluating other WMS solutions? I can do a detailed comparison
 
     def get_response(self, message, session):
         """Main response method using enhanced TOFU two-layer AI system"""
+        
+        # Check if info.txt has changed and reload if necessary
+        self.check_and_reload_knowledge()
         
         # TOFU Enhancement: Advanced lead qualification
         session = self.enhanced_lead_qualification(message, session)
@@ -959,3 +1015,91 @@ Are you currently evaluating other WMS solutions? I can do a detailed comparison
         }
         
         return questions.get(engagement_strategy, questions['awareness'])
+
+    def get_complete_product_list(self, relevant_context):
+        """Extract complete product information from context"""
+        sections = []
+        current_section = []
+        
+        for line in relevant_context.split('\n'):
+            if line.startswith('##'):
+                if current_section:
+                    sections.append('\n'.join(current_section))
+                current_section = [line]
+            elif line.strip():
+                current_section.append(line)
+        
+        if current_section:
+            sections.append('\n'.join(current_section))
+            
+        product_sections = []
+        for section in sections:
+            if any(keyword in section for keyword in ['Core Products', 'Product Overview', 'Features:', 'Capabilities:']):
+                product_sections.append(section)
+        
+        return '\n\n'.join(product_sections) if product_sections else relevant_context
+
+    def get_complete_info_response(self, message, relevant_context):
+        """Get complete product and feature information"""
+        sections = []
+        current_section = []
+        message_lower = message.lower()
+        
+        # Determine what kind of complete list is needed
+        show_products = any(word in message_lower for word in ['products', 'solutions', 'offerings'])
+        show_features = any(word in message_lower for word in ['features', 'capabilities', 'functionalities'])
+        
+        for line in relevant_context.split('\n'):
+            if line.startswith('##'):
+                if current_section:
+                    sections.append('\n'.join(current_section))
+                current_section = [line]
+            elif line.strip():
+                current_section.append(line)
+        
+        if current_section:
+            sections.append('\n'.join(current_section))
+            
+        relevant_sections = []
+        for section in sections:
+            if show_products and any(keyword in section for keyword in ['Core Products', 'Product Overview']):
+                relevant_sections.append(section)
+            elif show_features and any(keyword in section for keyword in ['Features:', 'Capabilities:', 'Technical Capabilities']):
+                relevant_sections.append(section)
+        
+        if not relevant_sections:  # If no specific sections found, return all
+            relevant_sections = sections
+            
+        complete_info = '\n\n'.join(relevant_sections)
+        
+        response = "Here's the complete information you requested:\n\n"
+        response += complete_info
+        response += "\n\nWould you like me to explain any specific aspect in more detail?"
+        
+        return response
+
+    def check_and_reload_knowledge(self):
+        """Check if info.txt has changed and reload if necessary"""
+        try:
+            info_file_path = 'info.txt'
+            if not os.path.exists(info_file_path):
+                print(f"Warning: {info_file_path} not found")
+                return False
+                
+            # Get current file modification time
+            current_mtime = os.path.getmtime(info_file_path)
+            
+            # Compare with stored mtime
+            last_mtime = getattr(self, '_last_info_mtime', None)
+            
+            if last_mtime is None or current_mtime > last_mtime:
+                print("info.txt has changed, reloading knowledge base...")
+                self._last_info_mtime = current_mtime
+                self.load_knowledge_base(force_reload=True)
+                return True
+            
+            return False
+            
+        except Exception as e:
+            print(f"Error checking knowledge base changes: {e}")
+            return False

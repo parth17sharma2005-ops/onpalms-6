@@ -759,6 +759,12 @@
         // Auto-focus on input when page loads
         window.onload = function() {
             document.getElementById('chatInput').focus();
+            
+            // Send automatic greeting message
+            setTimeout(() => {
+                const greetingMessage = "Hello! I'm your PALMS™ Sales Assistant. 👋\n\nHow can I assist you today?";
+                addMessage(greetingMessage, 'bot');
+            }, 500);
         }
     </script>
 </body>

@@ -5,6 +5,22 @@ PALMS™ is a comprehensive warehouse management solution designed for modern su
 
 ## Core Products
 
+PALMS™ offers 9 comprehensive warehouse management products:
+
+1. **PALMS™ WMS** (Warehouse Management System) - Core warehouse management
+2. **PALMS™ 3PL** - Third-party logistics solution
+3. **PALMS™ Cross Dock** - Specialized cross-docking solution
+4. **PALMS™ Supplier & Customer Portal** - Stakeholder interface
+5. **PALMS™ Warehouse Control System** - Warehouse automation control
+6. **PALMS™ Mobile** - Mobile warehouse operations (includes Barcode Scanning)
+7. **PALMS™ Analytics** - Business intelligence platform
+8. **PALMS™ Light Systems** - Pick-to-light solution
+9. **PALMS™ Enterprise** - Enterprise-scale WMS solution
+
+Note: PALMS™ Cold Storage Management Software features are integrated across multiple products, particularly in the Industry Solutions for Cold Storage and Agriculture.
+
+---
+
 ### PALMS™ WMS (Warehouse Management System)
 - Core warehouse management system optimized for efficiency and accuracy
 - Primary Features:
@@ -29,10 +45,10 @@ PALMS™ is a comprehensive warehouse management solution designed for modern su
 
 - Performance Metrics:
   * 99.9% inventory accuracy
-  * 40% reduction in picking time
-  * 60% improvement in space utilization
-  * 45% reduction in processing errors
-  * 30% increase in throughput
+  * 50%+ reduction in picking time
+  * 90%+ improvement in space utilization
+  * 99% reduction in processing errors
+  * 30%+ increase in throughput
   * Real-time visibility across operations
 
 ### PALMS™ 3PL
@@ -89,15 +105,35 @@ PALMS™ is a comprehensive warehouse management solution designed for modern su
 
 ### PALMS™ Mobile
 - Mobile warehouse operations app
-- Features:
-  * Barcode scanning
-  * Mobile picking
+- Core Features:
+  * Advanced barcode scanning engine
+  * Multi-format barcode support
+  * QR code compatibility
+  * Mobile picking and put-away
   * Real-time updates
   * Worker tracking
   * Inventory management
   * Task assignment
-  * Status reporting
+
+- Scanning Capabilities:
+  * 1D/2D barcode support
+  * Batch scanning
+  * Serial number scanning
+  * Location code scanning
+  * Document scanning
+  * Image capture
+  * Offline scanning
+  * Auto-validation
+
+- Mobile Features:
+  * Real-time task updates
+  * GPS location tracking
+  * Voice-enabled operations
   * Mobile dashboards
+  * Push notifications
+  * Digital signature capture
+  * Status reporting
+  * Performance metrics
 
 ### PALMS™ Enterprise
 - Enterprise-scale WMS solution
@@ -110,6 +146,94 @@ PALMS™ is a comprehensive warehouse management solution designed for modern su
   * Advanced security
   * API integration
   * Enterprise reporting
+
+### PALMS™ Cross Dock
+- Specialized cross-docking solution
+- Key Features:
+  * Real-time dock scheduling and management
+  * Advanced load planning and optimization
+  * Immediate transfer tracking
+  * Cross-dock efficiency metrics
+  * Automated staging area management
+  * Dynamic gate assignment
+  * Real-time visibility of incoming shipments
+  * Outbound load optimization
+
+- Performance Features:
+  * Live dock status monitoring
+  * Throughput optimization
+  * Resource allocation
+  * Exception handling
+  * Performance analytics
+  * SLA tracking
+  * Quality control integration
+  * Real-time reporting
+
+### PALMS™ Supplier & Customer Portal
+- Comprehensive stakeholder interface
+- Key Features:
+  * Real-time inventory visibility
+  * Order placement and tracking
+  * Document management
+  * Shipment status updates
+  * Returns management
+  * Invoice access and processing
+  * Performance metrics
+  * Communication platform
+
+- Portal Capabilities:
+  * Custom dashboard views
+  * Role-based access control
+  * Document repository
+  * Automated notifications
+  * Query management
+  * Report generation
+  * API integration
+  * Mobile access
+
+### PALMS™ Warehouse Control System
+- Advanced warehouse automation control
+- Core Features:
+  * Real-time equipment control
+  * Automated system coordination
+  * Equipment status monitoring
+  * Material flow optimization
+  * Exception handling
+  * System performance tracking
+  * Maintenance scheduling
+  * Safety protocol management
+
+- Control Capabilities:
+  * Conveyor system management
+  * Sorter control
+  * AS/RS integration
+  * AGV coordination
+  * Pick-to-light systems
+  * Put-to-light systems
+  * Voice picking integration
+  * Robotic system control
+
+### PALMS™ Light Systems
+- Advanced pick-to-light solution
+- Key Features:
+  * LED-based picking guidance
+  * Put-to-light functionality
+  * Zone picking optimization
+  * Real-time pick confirmation
+  * Error reduction system
+  * Productivity tracking
+  * Multi-order processing
+  * Batch picking support
+
+- System Capabilities:
+  * Digital display integration
+  * Wireless communication
+  * Battery management
+  * Light pattern customization
+  * Zone management
+  * Performance metrics
+  * Error detection
+  * System diagnostics
 
 ## Technical Capabilities
 
@@ -252,14 +376,26 @@ PALMS™ is a comprehensive warehouse management solution designed for modern su
 - Promotion management
 
 #### Cold Storage and Agriculture
-- Temperature monitoring
-- Zone management
-- Compliance tracking
-- Shelf-life management
-- First-expire-first-out
-- Quality parameters
-- Batch traceability
-- Environmental controls
+- Comprehensive cold storage management system
+- Temperature Control Features:
+  * Real-time temperature monitoring
+  * Multi-zone temperature management
+  * Temperature mapping and validation
+  * Automated alerts and notifications
+  * Historical temperature logging
+  * Compliance reporting
+  * Mobile temperature monitoring
+  * Cold chain integrity tracking
+
+- Advanced Storage Features:
+  * Zone-wise capacity management
+  * Product-specific storage conditions
+  * Shelf-life tracking and management
+  * First-expire-first-out automation
+  * Quality parameters monitoring
+  * Batch and lot traceability
+  * Environmental controls
+  * Storage optimization algorithms
 
 #### Automotive
 - Serial number tracking
@@ -280,6 +416,8 @@ PALMS™ is a comprehensive warehouse management solution designed for modern su
 - Testing integration
 - Calibration tracking
 - Warranty management
+
+#### Food and Beverages
 
 #### FMCG and Consumer Goods
 - Batch management
@@ -420,6 +558,7 @@ A: PALMS™ provides comprehensive support:
 - UAE: +971-505528942
 
 ### Company Details
-Technoforte Software Pvt. Ltd.
-ISO 9001:2015 & ISO 27001:2013 certified
-Specialized in warehouse management solutions
+Technoforte Software Private Limited is an ISO 9001:2015 & ISO 27001:2013 certified company engaged in providing high end enterprise solution in the field of Information Technology.
+
+Through Technoforte’s suite of products, the company specializes in helping large and medium sized industries in implementing Business Intelligence solutions, Warehouse Management System, Service, and Warranty Management System and Mobile based Enterprise Level Solutions.
+

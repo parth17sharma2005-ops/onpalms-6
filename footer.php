@@ -555,7 +555,7 @@ if ( ! function_exists( 'elementor_theme_do_location' ) || ! elementor_theme_do_
         // Add welcome message if first time
         if (body.children.length === 0) {
             setTimeout(() => {
-                palmsAddMessage("Welcome to PALMS™. I'm here to assist you with optimizing your warehouse operations.", false);
+                palmsAddMessage("Hello! I'm your PALMS™ Sales Assistant. 👋\n\nHow can I assist you today?", false);
             }, 400);
         }
         
@@ -914,8 +914,8 @@ if ( ! function_exists( 'elementor_theme_do_location' ) || ! elementor_theme_do_
     
     // Google Sheets integration function
     async function submitToGoogleSheets(name, email, phone) {
-        // Replace with your Google Apps Script Web App URL
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwJiB_aMzjZyBywk63UW4UwNajFHqOiFlSBJY8A2M0RxjEzvKeLKFuzwFWeu9Bwt4Ml/exec';
+        // Google Apps Script Web App URL - matches backend configuration
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwtkTDW3CjoKgSJrDgj2dWn6oU-ZXYncoGuu6h7zeB5lT14xe_8Q-yjtlwYxHZ61H77/exec';
         
         try {
             const currentDate = new Date().toLocaleString();

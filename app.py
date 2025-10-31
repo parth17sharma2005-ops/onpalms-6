@@ -109,6 +109,47 @@ def chat():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/submit_info', methods=['POST'])
+def submit_info():
+    """Handle info submission from inline forms (footer.php compatibility)"""
+    try:
+        data = request.json
+        name = data.get('name', '')
+        email = data.get('email', '')
+        
+        # Validate business email
+        is_business = chatbot.validate_business_email(email)
+        
+        if not is_business:
+            return jsonify({
+                'success': False,
+                'message': "Please provide a business email address. Personal email domains like Gmail, Yahoo, and Hotmail are not accepted.",
+                'show_form_again': True
+            })
+        
+        # Basic validation
+        if not name or not email:
+            return jsonify({
+                'success': False,
+                'message': "Please provide both name and email address.",
+                'show_form_again': True
+            })
+        
+        # Log the info submission
+        print(f"Info submitted: {name} ({email})")
+        
+        return jsonify({
+            'success': True,
+            'message': f"Thank you {name}! Your information has been recorded. How can I assist you further?"
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f"An error occurred: {str(e)}",
+            'show_form_again': False
+        }), 500
+
 @app.route('/submit_demo', methods=['POST'])
 def submit_demo():
     try:
@@ -151,7 +192,7 @@ def submit_demo():
         
         return jsonify({
             'success': True,
-            'message': f"Thank you {name}! Your demo request has been submitted to our Google Sheets. Our sales team will contact you at {email} within 24 hours to schedule your personalized PALMS™ demonstration.",
+            'message': f"Thank you {name}! Your demo request has been submitted. Our sales team will contact you at {email} within 24 hours to schedule your personalized PALMS™ demonstration.",
             'sheets_saved': sheets_success
         })
         
